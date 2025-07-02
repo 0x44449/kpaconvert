@@ -1,17 +1,19 @@
-import PostcodeEmbed from "@/components/PostcodeEmbed";
+import AddressConverter from "@/components/AddressConverter";
 
 export default function Home() {
   return (
-    <main className="h-screen flex flex-col">
-      <header className="p-4 text-center text-xl font-bold">
-        📦 카드결제용 주소 변환기
-      </header>
-
-      <section className="flex-grow flex items-start justify-center">
-        <div className="max-w-2xl w-full h-full">
-          <PostcodeEmbed />
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="mb-8 text-center">
+          <h1 className="mb-2">한국 주소 &rarr; 해외결제용 영문주소 변환기</h1>
+          <p className="text-muted-foreground">
+            한국 주소를 검색하고 해외 온라인 결제에 적합한 영문 주소 형태로 변환해보세요
+          </p>
         </div>
-      </section>
-    </main>
-  );
+
+        <AddressConverter />
+      </div>
+    </div>
+
+  )
 }

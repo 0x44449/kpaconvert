@@ -4,32 +4,56 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { JusoAddress } from "@/types/juso";
+import { EngAddressSearchApiResponse, EngJusoItem } from "@/types/eng-juso";
+import { KorAddressSearchApiResponse, KorJusoItem } from "@/types/kor-juso";
 import { Label } from "@radix-ui/react-label";
 import axios from "axios";
 import { Check, Copy, Search } from "lucide-react";
 import { useState } from "react";
 
 export default function Home() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<KorJusoItem[]>([]);
+
+  const [koreanAddress, setKoreanAddress] = useState<KorJusoItem | null>(null);
+  const [englishAddress, setEnglishAddress] = useState<EngJusoItem | null>(null);
 
   const handleSearch = async () => {
-    const response = await axios.post<JusoAddress>('/api/address', {
-      // currentPage: "1",
-      // countPerPage: "10",
-      keyword: searchQuery,
-      // resultType: 'json',
-      firstSort: 'none',
-      start: "0",
-      rows: "10",
-      wt: 'xml',
-      kind: 'road',
+    const response = await axios.get<KorAddressSearchApiResponse>('/api/address/kor-search', {
+      params: {
+        keyword: searchQuery,
+        currentPage: 1,
+        countPerPage: 10,
+      },
     });
     console.log(response.data);
+
+    if (response.data.results && response.data.results.juso) {
+      setSearchResults(response.data.results.juso);
+    } else {
+      setSearchResults([]);
+    }
   }
 
-  const handleAddressSelect = () => {
+  const handleAddressSelect = async (address: KorJusoItem) => {
+    setKoreanAddress(address);
+
+    const response = await axios.get<EngAddressSearchApiResponse>('/api/address/eng-search', {
+      params: {
+        keyword: address.roadAddr,
+        currentPage: 1,
+        countPerPage: 10,
+      },
+    });
+    console.log(response.data);
+
+    if (response.data.results && response.data.results.juso.length > 0) {
+      const engAddress = response.data.results.juso[0];
+      setEnglishAddress(engAddress);
+    } else {
+      setEnglishAddress(null);
+    }
   }
 
   const copyToClipboard = async (text: string, fieldName: string) => {
@@ -62,44 +86,44 @@ export default function Home() {
             </Button>
           </div>
           
-          {/* {searchResults.length > 0 && (
+          {searchResults.length > 0 && (
             <div className="space-y-2">
               <Label>검색 결과</Label>
               {searchResults.map((address) => (
                 <div
-                  key={address.id}
+                  key={address.roadAddr}
                   className="p-3 border rounded-lg cursor-pointer hover:bg-accent transition-colors"
-                  onClick={() => handleAddressSelect()}
+                  onClick={() => handleAddressSelect(address)}
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">도로명</Badge>
-                      <span>{address.roadAddress}</span>
+                      <span>{address.roadAddr}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">지번</Badge>
-                      <span className="text-muted-foreground">{address.jibunAddress}</span>
+                      <span className="text-muted-foreground">{address.jibunAddr}</span>
                     </div>
-                    {address.buildingName && (
+                    {address.bdNm && (
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">건물명</Badge>
-                        <span className="text-muted-foreground">{address.buildingName}</span>
+                        <span className="text-muted-foreground">{address.bdNm}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">우편번호</Badge>
-                      <span className="text-muted-foreground">{address.zipCode}</span>
+                      <span className="text-muted-foreground">{address.zipNo}</span>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          )} */}
+          )}
         </CardContent>
       </Card>
 
       {/* English Address Display */}
-      {/* {englishAddress && (
+      {(englishAddress && koreanAddress) && (
         <Card>
           <CardHeader>
             <CardTitle>해외결제용 영문 주소</CardTitle>
@@ -107,18 +131,18 @@ export default function Home() {
           <CardContent className="space-y-4">
             <div className="grid gap-4">
               <div className="space-y-2">
-                <Label htmlFor="address1">Address Line 1 *</Label>
+                <Label htmlFor="address1">Street Address</Label>
                 <div className="flex gap-2">
                   <Input
                     id="address1"
-                    value={englishAddress.addressLine1}
+                    value={englishAddress.roadAddr} // Remove commas for better formatting
                     readOnly
                     className="bg-muted"
                   />
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => copyToClipboard(englishAddress.addressLine1, 'address1')}
+                    onClick={() => copyToClipboard(englishAddress.roadAddr, 'address1')}
                   >
                     {copiedField === 'address1' ? (
                       <Check className="h-4 w-4 text-green-600" />
@@ -129,7 +153,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="address2">Address Line 2</Label>
                 <div className="flex gap-2">
                   <Input
@@ -152,21 +176,21 @@ export default function Home() {
                     )}
                   </Button>
                 </div>
-              </div>
+              </div> */}
 
               <div className="space-y-2">
-                <Label htmlFor="city">City *</Label>
+                <Label htmlFor="city">City/Town/Village</Label>
                 <div className="flex gap-2">
                   <Input
                     id="city"
-                    value={englishAddress.city}
+                    value={englishAddress.sggNm}
                     readOnly
                     className="bg-muted"
                   />
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => copyToClipboard(englishAddress.city, 'city')}
+                    onClick={() => copyToClipboard(englishAddress.sggNm, 'city')}
                   >
                     {copiedField === 'city' ? (
                       <Check className="h-4 w-4 text-green-600" />
@@ -178,18 +202,18 @@ export default function Home() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="state">State/Province *</Label>
+                <Label htmlFor="state">State/Province/Region</Label>
                 <div className="flex gap-2">
                   <Input
                     id="state"
-                    value={englishAddress.state}
+                    value={englishAddress.siNm}
                     readOnly
                     className="bg-muted"
                   />
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => copyToClipboard(englishAddress.state, 'state')}
+                    onClick={() => copyToClipboard(englishAddress.siNm, 'state')}
                   >
                     {copiedField === 'state' ? (
                       <Check className="h-4 w-4 text-green-600" />
@@ -201,18 +225,41 @@ export default function Home() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="postal">Postal Code *</Label>
+                <Label htmlFor="district">District/Locality</Label>
                 <div className="flex gap-2">
                   <Input
-                    id="postal"
-                    value={englishAddress.postalCode}
+                    id="district"
+                    value={englishAddress.emdNm}
                     readOnly
                     className="bg-muted"
                   />
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => copyToClipboard(englishAddress.postalCode, 'postal')}
+                    onClick={() => copyToClipboard(englishAddress.emdNm, 'district')}
+                  >
+                    {copiedField === 'district' ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="postal">Postal Code</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="postal"
+                    value={englishAddress.zipNo}
+                    readOnly
+                    className="bg-muted"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyToClipboard(englishAddress.zipNo, 'postal')}
                   >
                     {copiedField === 'postal' ? (
                       <Check className="h-4 w-4 text-green-600" />
@@ -223,7 +270,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <Label htmlFor="country">Country *</Label>
                 <div className="flex gap-2">
                   <Input
@@ -244,7 +291,7 @@ export default function Home() {
                     )}
                   </Button>
                 </div>
-              </div>
+              </div> */}
             </div>
 
             <div className="pt-4 border-t">
@@ -256,7 +303,7 @@ export default function Home() {
             </div>
           </CardContent>
         </Card>
-      )} */}
+      )}
     </div>
   )
 }
